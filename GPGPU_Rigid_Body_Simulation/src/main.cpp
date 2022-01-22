@@ -9,8 +9,13 @@
 #include "Renderer.h"
 #include "IndexBuffer.h"
 #include "VertexBuffer.h"
+#include "VertexBufferLayout.h"
 #include "VertexArray.h"
 #include "Shader.h"
+#include "Texture.h"
+
+#include "glm/glm.hpp"
+#include "glm/gtc/matrix_transform.hpp"
 
 int main(void) {
   GLFWwindow* window;
@@ -43,48 +48,65 @@ int main(void) {
   std::cout << glGetString(GL_VERSION) << std::endl;
   {
     float positions[] = {
-        -0.5f, -0.5f,  // 0
-        0.5f,  -0.5f,  // 1
-        0.5f,  0.5f,   // 2
-        -0.5f, 0.5f    // 3
+        100.0f, 100.0f, /*position*/ 0.0f, 0.0f, /*texture position*/  // 0 - bottom left
+        200.0f, 100.0f, /*position*/ 1.0f, 0.0f, /*texture position*/  // 1 - bottom right
+        200.0f, 200.0f, /*position*/ 1.0f, 1.0f, /*texture position*/  // 2 - top right
+        100.0f, 200.0f, /*position*/ 0.0f, 1.0f, /*texture position*/  // 3 - top left
     };
 
-    unsigned int indicies[] = {0, 1, 2, 2, 3, 0};
+    unsigned int indicies[] = {
+        0, 1, 2, 
+        2, 3, 0
+    };
+
+    GLCall(glEnable(GL_BLEND));
+    GLCall(glBlendFunc(GL_SRC_ALPHA, GL_ONE_MINUS_SRC_ALPHA));
 
     VertexArray va;
-    VertexBuffer vb(positions, 4 * 2 * sizeof(float));
+    VertexBuffer vb(positions, 4 * 4 * sizeof(float));
 
     VertexBufferLayout layout;
+    layout.Push<float>(2);
     layout.Push<float>(2);
     va.AddBuffer(vb, layout);
 
     IndexBuffer ib(indicies, 6);
 
+    glm::mat4 proj = glm::ortho(0.0f, 960.0f, 0.0f, 540.0f, -1.0f, 1.0f);
+    glm::mat4 view = glm::translate(glm::mat4(1.0f), glm::vec3(-100, 0, 0));
+    glm::mat4 model = glm::translate(glm::mat4(1.0f), glm::vec3(200, 200, 0));
+
+    // Multiplication in reverse order because OpenGL is column-major with matrices
+    glm::mat4 mvp = proj * view * model;
+
     Shader shader("res/shaders/Basic.shader");
     shader.Bind();
     shader.SetUniform4f("u_Color", 0.0f, 1.0f, 0.0f, 1.0f);
 
+    Texture texture("res/textures/tree.png");
+    texture.Bind();
+    shader.SetUniform1i("u_Texture", 0);
+
+    shader.SetUniformMat4f("u_MVP", mvp);
+
     va.Unbind();
-    shader.Unbind();
     vb.Unbind();
     ib.Unbind();
+    shader.Unbind();
+
+    Renderer renderer;
 
     /* Loop until the user closes the window */
     float g = 1.0f;
     float increment = -0.005f;
     while (!glfwWindowShouldClose(window)) {
       /* Render here */
-      GLCall(glClear(GL_COLOR_BUFFER_BIT));
-
-      // glDrawArrays(GL_TRIANGLES, 0, 3);
+      renderer.Clear();
 
       shader.Bind();
       shader.SetUniform4f("u_Color", 0.0f, g, 0.0f, 1.0f);
 
-      va.Bind();
-      ib.Bind();
-
-      GLCall(glDrawElements(GL_TRIANGLES, 6, GL_UNSIGNED_INT, nullptr));
+      renderer.Draw(va, ib, shader);
 
       if (g > 1.0f)
         increment = -0.005f;

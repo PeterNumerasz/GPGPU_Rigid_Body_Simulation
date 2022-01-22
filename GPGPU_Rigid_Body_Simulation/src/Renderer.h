@@ -2,6 +2,10 @@
 
 #include <GL\glew.h>
 
+#include "VertexArray.h"
+#include "IndexBuffer.h"
+#include "Shader.h"
+
 // Macros for basic debugging of OpenGL function calls
 // Has some flaws, but does what it needs to do
 
@@ -26,3 +30,10 @@ void GLClearError();
 // For debugging OpenGL
 // Prints out the current error
 bool GLLogCall(const char* function, const char* file, int line);
+
+class Renderer {
+ public:
+  void Clear() const;
+  void Draw(const VertexArray& va, const IndexBuffer& ib, const Shader& shader) const;
+ private:
+};
